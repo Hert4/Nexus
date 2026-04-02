@@ -16,6 +16,7 @@ Mỗi bài học giải thích **một concept**, trỏ thẳng đến đoạn c
 | 08 | [LangGraph Agents](./08-langgraph-agents.md) | `backend/src/agents/graph.py:56` | State machine, nodes, conditional edges, tools |
 | 09 | [Kubernetes + k3s](./09-kubernetes.md) | `k8s/api/deployment.yml` | Manifests, StatefulSet, HPA, Helm chart |
 | 10 | [Monitoring & Observability](./10-monitoring.md) | `backend/src/observability/metrics.py:49` | Prometheus, Grafana, Langfuse LLM tracing |
+| 11 | [Evaluation + Guardrails](./11-evaluation.md) | `backend/src/eval/evaluator.py:118` | LLM-as-judge, bootstrap CI, rate limiting, A/B testing |
 
 ---
 

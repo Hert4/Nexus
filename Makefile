@@ -1,4 +1,4 @@
-.PHONY: up down logs logs-chat logs-embed setup serve serve-stop serve-status test lint build monitor-up monitor-down k8s-setup k8s-deploy k8s-status k8s-down help
+.PHONY: up down logs logs-chat logs-embed setup serve serve-stop serve-status test lint build monitor-up monitor-down k8s-setup k8s-deploy k8s-status k8s-down eval eval-factual eval-quick help
 
 help:
 	@echo "Nexus AI — available commands:"
@@ -18,6 +18,11 @@ help:
 	@echo "  === Monitoring (local Docker) ==="
 	@echo "  make monitor-up  Start Prometheus + Grafana"
 	@echo "  make monitor-down Stop monitoring stack"
+	@echo ""
+	@echo "  === Evaluation ==="
+	@echo "  make eval         Run full eval suite"
+	@echo "  make eval-factual Run factual cases only"
+	@echo "  make eval-quick   Run 10 cases (fast sanity check)"
 	@echo ""
 	@echo "  === Kubernetes (k3s) ==="
 	@echo "  make k8s-setup   Cài k3s + nginx ingress (chạy 1 lần, cần sudo)"
@@ -82,6 +87,15 @@ k8s-status:
 
 k8s-down:
 	helm uninstall nexus-ai -n nexus-ai || true
+
+eval:
+	bash scripts/run-eval.sh
+
+eval-factual:
+	bash scripts/run-eval.sh --category factual
+
+eval-quick:
+	bash scripts/run-eval.sh --limit 10
 
 # ── Setup ──────────────────────────────────────────────────────────────────────
 setup:

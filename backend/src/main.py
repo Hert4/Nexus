@@ -10,7 +10,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import chat, documents, health, agents
+from src.api.routes import chat, documents, health, agents, feedback
 from src.config import settings
 from src.observability.logging import setup_logging
 from src.observability.metrics import setup_metrics
@@ -51,3 +51,4 @@ app.include_router(health.router, tags=["health"])
 app.include_router(chat.router, prefix="/v1", tags=["chat"])
 app.include_router(documents.router, prefix="/v1", tags=["documents"])
 app.include_router(agents.router, prefix="/v1", tags=["agents"])
+app.include_router(feedback.router, prefix="/v1", tags=["feedback"])

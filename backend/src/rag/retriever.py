@@ -16,11 +16,8 @@ from langchain_core.documents import Document
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     FusionQuery,
-    NamedSparseVector,
-    NamedVector,
     Prefetch,
     SparseVector,
-    Query,
 )
 
 from src.config import settings
@@ -84,18 +81,17 @@ class HybridRetriever:
             collection_name=settings.qdrant_collection,
             prefetch=[
                 Prefetch(
-                    query=NamedVector(name="", vector=dense_vec),
+                    query=dense_vec,   # raw list[float] — qdrant-client 1.17+ không nhận NamedVector
+                    using="",          # "" = default unnamed vector
                     limit=k * 3,
                 ),
                 Prefetch(
-                    query=NamedSparseVector(
-                        name="sparse",
-                        vector=sparse_vec,
-                    ),
+                    query=sparse_vec,  # SparseVector — qdrant-client 1.17+ API
+                    using="sparse",    # tên vector field sparse trong collection
                     limit=k * 3,
                 ),
             ],
-            query=Query(fusion=FusionQuery(fusion="rrf")),
+            query=FusionQuery(fusion="rrf"),  # FusionQuery trực tiếp — Query là Union alias, không instantiate được
             limit=k,
             with_payload=True,
         )

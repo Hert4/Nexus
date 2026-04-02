@@ -55,11 +55,12 @@ def _text_to_sparse(text: str) -> SparseVector:
 results = await self._client.query_points(
     collection_name=settings.qdrant_collection,
 
-    # retriever.py:86-97 — 2 prefetch queries chạy song song
+    # retriever.py:85-97 — 2 prefetch queries chạy song song
     prefetch=[
         Prefetch(
-            query=NamedVector(name="", vector=dense_vec),  # dense search
-            limit=k * 3,   # lấy top 15 (k=5 → 15) để có pool lớn cho fusion
+            query=dense_vec,   # raw list[float] — qdrant-client ≥1.17 API
+            using="",          # tên vector field ("" = default unnamed vector)
+            limit=k * 3,       # lấy top 15 (k=5 → 15) để có pool lớn cho fusion
         ),
         Prefetch(
             query=NamedSparseVector(name="sparse", vector=sparse_vec),  # sparse search
@@ -132,6 +133,92 @@ async def test():
 asyncio.run(test())
 "
 # Cần đã seed documents trước: bash scripts/seed-documents.sh
+```
+
+---
+
+## ⚠️ Lỗi thực tế gặp phải
+
+### `NamedVector` và `NamedSparseVector` bị reject trong `Prefetch.query` (qdrant-client ≥ 1.17)
+
+**Triệu chứng**:
+- `curl -N -X POST http://localhost:8000/v1/chat -d '{"message":"...", "stream":true}'`
+- → `curl: (18) transfer closed with outstanding read data remaining`
+- API logs: `ValidationError: 23 validation errors for Prefetch` với message như:
+  `Input should be a valid dictionary or instance of OrderByQuery [input_value=NamedVector(...)]`
+
+**Root cause**: qdrant-client 1.17.1 đổi type signature của `Prefetch.query`.  
+Trước đây `Prefetch.query` nhận `NamedVector`/`NamedSparseVector` để chỉ định cả vector lẫn tên field.  
+Từ 1.17+, `Prefetch` tách riêng thành 2 fields:
+- `query`: raw `list[float]` hoặc `SparseVector` (không bọc trong Named*)
+- `using`: `str` — tên của vector field trong collection
+
+**Fix** ([`retriever.py:84`](../../backend/src/rag/retriever.py#L84)):
+```python
+# ❌ Cũ — qdrant-client < 1.17:
+Prefetch(
+    query=NamedVector(name="", vector=dense_vec),      # bị reject
+    limit=k * 3,
+),
+Prefetch(
+    query=NamedSparseVector(name="sparse", vector=sparse_vec),  # bị reject
+    limit=k * 3,
+),
+
+# ✅ Mới — qdrant-client ≥ 1.17:
+Prefetch(
+    query=dense_vec,   # raw list[float]
+    using="",          # "" = default unnamed vector field
+    limit=k * 3,
+),
+Prefetch(
+    query=sparse_vec,  # SparseVector object trực tiếp
+    using="sparse",    # tên vector field sparse
+    limit=k * 3,
+),
+```
+
+**Tại sao curl báo lỗi 18 thay vì 500?**  
+SSE stream đã bắt đầu gửi (`HTTP 200 + headers`), nhưng khi exception xảy ra bên trong async generator,  
+FastAPI đóng connection giữa chừng → curl thấy "transfer closed with outstanding read data remaining".  
+Không phải lỗi curl hay buffering — là unhandled exception trong streaming generator.
+
+### `Query(fusion=...)` TypeError: Cannot instantiate typing.Union (qdrant-client ≥ 1.17)
+
+**Triệu chứng**:
+```
+TypeError: Cannot instantiate typing.Union
+  File ".../retriever.py", line 95, in retrieve
+    query=Query(fusion=FusionQuery(fusion="rrf")),
+```
+
+**Root cause**: `Query` trong qdrant-client 1.17+ là **type alias** (`Union[NearestQuery, RecommendQuery, ..., FusionQuery, ...]`),  
+không phải class — không thể gọi `Query(...)`.
+
+**Fix** ([`retriever.py:94`](../../backend/src/rag/retriever.py#L94)):
+```python
+# ❌ Cũ:
+query=Query(fusion=FusionQuery(fusion="rrf")),
+
+# ✅ Mới — dùng FusionQuery trực tiếp:
+query=FusionQuery(fusion="rrf"),
+```
+
+### Collection không tồn tại khi chưa upload documents
+
+**Triệu chứng**:
+```
+qdrant_client.http.exceptions.UnexpectedResponse: 404 (Not Found)
+{"status":{"error":"Not found: Collection `nexus_docs` doesn't exist!"}}
+```
+
+**Root cause**: Collection chỉ được tạo khi document đầu tiên được ingest (trong `ingestion.py`).  
+Nếu chạy RAG query trước khi upload document, collection chưa tồn tại.
+
+**Fix**: Upload ít nhất 1 document trước khi dùng RAG:
+```bash
+curl -X POST http://localhost:8000/v1/documents \
+  -F "file=@your-document.pdf"
 ```
 
 ---

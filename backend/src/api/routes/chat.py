@@ -14,13 +14,15 @@ Hỗ trợ cả RAG mode (dùng documents đã ingest) và plain chat mode.
 """
 
 import json
+import uuid
 from collections.abc import AsyncGenerator
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from src.core.guardrails import check_input, chat_limiter
 from src.core.llm import LLMClient
 from src.core.model_router import TaskComplexity, router as model_router
 from src.rag.chain import RAGChain
@@ -34,9 +36,11 @@ class ChatRequest(BaseModel):
     stream: bool = True
     use_rag: bool = True  # Dùng RAG hay plain chat
     system: str = "You are a helpful assistant."
+    session_id: str = ""  # Optional — dùng cho A/B sticky assignment
 
 
 class ChatResponse(BaseModel):
+    message_id: str
     answer: str
     sources: list[dict] = []
 
@@ -50,15 +54,31 @@ async def _sse_generator(gen: AsyncGenerator[str, None]) -> AsyncGenerator[bytes
 
 
 @api_router.post("/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest, request: Request):
     """
-    Chat endpoint.
-    - use_rag=True  → dùng RAG chain (retrieve từ Qdrant + LLM generate)
+    Chat endpoint với guardrails.
+    - use_rag=True  → RAG chain (retrieve từ Qdrant + LLM generate)
     - use_rag=False → plain LLM chat
     - stream=True   → SSE streaming response
-    - stream=False  → JSON response
+    - stream=False  → JSON response với message_id cho feedback
     """
-    logger.info("Chat request", use_rag=req.use_rag, stream=req.stream, msg_len=len(req.message))
+    # Rate limiting
+    client_ip = request.client.host if request.client else "unknown"
+    if not chat_limiter.allow(client_ip):
+        raise HTTPException(429, "Too many requests. Please slow down.")
+
+    # Input guardrails
+    check = check_input(req.message)
+    if not check.safe:
+        logger.warning("Input blocked", reason=check.reason, risk=check.risk_level)
+        raise HTTPException(400, f"Input rejected: {check.reason}")
+
+    message_id = str(uuid.uuid4())[:8]
+    logger.info("Chat request",
+                message_id=message_id,
+                use_rag=req.use_rag,
+                stream=req.stream,
+                msg_len=len(req.message))
 
     if req.use_rag:
         chain = RAGChain()
@@ -66,13 +86,12 @@ async def chat(req: ChatRequest):
             return StreamingResponse(
                 _sse_generator(chain.stream(req.message)),
                 media_type="text/event-stream",
-                headers={"X-Accel-Buffering": "no"},
+                headers={"X-Accel-Buffering": "no", "X-Message-ID": message_id},
             )
         else:
             result = await chain.retrieve_with_answer(req.message)
-            return ChatResponse(**result)
+            return ChatResponse(message_id=message_id, **result)
     else:
-        # Plain chat — dùng model router để chọn params
         params = model_router.route(req.message)
         llm = LLMClient(base_url=params.base_url, model=params.model)
         if req.stream:
@@ -81,11 +100,11 @@ async def chat(req: ChatRequest):
                     llm.stream(req.message, system=req.system, temperature=params.temperature)
                 ),
                 media_type="text/event-stream",
-                headers={"X-Accel-Buffering": "no"},
+                headers={"X-Accel-Buffering": "no", "X-Message-ID": message_id},
             )
         else:
             answer = await llm.chat(req.message, system=req.system, temperature=params.temperature)
-            return ChatResponse(answer=answer)
+            return ChatResponse(message_id=message_id, answer=answer)
 
 
 router = api_router
