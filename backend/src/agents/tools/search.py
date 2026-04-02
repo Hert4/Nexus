@@ -31,8 +31,7 @@ def web_search(query: str) -> str:
         if not results:
             return "No results found."
         formatted = "\n\n".join(
-            f"**{r['title']}**\n{r['body']}\nSource: {r['href']}"
-            for r in results
+            f"**{r['title']}**\n{r['body']}\nSource: {r['href']}" for r in results
         )
         logger.info("Web search done", count=len(results))
         return formatted

@@ -27,8 +27,6 @@ from pathlib import Path
 
 import structlog
 
-from src.config import settings
-
 logger = structlog.get_logger(__name__)
 
 _DEFAULT_DATA = Path(os.environ.get("NEXUS_DATA_DIR", "/app/data"))
@@ -38,14 +36,16 @@ DB_PATH = _DEFAULT_DATA / "ab_testing.db"
 @dataclass
 class Variant:
     """Một variant trong A/B experiment."""
-    name: str               # "control" | "treatment_a" | ...
-    params: dict            # LLM params override: {"temperature": 0.5, ...}
-    weight: float = 0.5     # sampling weight (0–1)
+
+    name: str  # "control" | "treatment_a" | ...
+    params: dict  # LLM params override: {"temperature": 0.5, ...}
+    weight: float = 0.5  # sampling weight (0–1)
 
 
 @dataclass
 class Assignment:
     """Kết quả phân công variant cho 1 request."""
+
     assignment_id: str
     experiment: str
     variant_name: str
@@ -57,18 +57,22 @@ class Assignment:
 EXPERIMENTS: dict[str, list[Variant]] = {
     # So sánh temperature cao vs thấp
     "temperature": [
-        Variant("control",   {"temperature": 0.7}, weight=0.5),
-        Variant("low_temp",  {"temperature": 0.3}, weight=0.5),
+        Variant("control", {"temperature": 0.7}, weight=0.5),
+        Variant("low_temp", {"temperature": 0.3}, weight=0.5),
     ],
     # So sánh max_tokens
     "context_length": [
-        Variant("control",   {"max_tokens": 1024}, weight=0.5),
-        Variant("extended",  {"max_tokens": 2048}, weight=0.5),
+        Variant("control", {"max_tokens": 1024}, weight=0.5),
+        Variant("extended", {"max_tokens": 2048}, weight=0.5),
     ],
     # System prompt variants
     "system_prompt": [
-        Variant("default",   {"system": "You are a helpful assistant."}, weight=0.5),
-        Variant("concise",   {"system": "You are a concise, precise assistant. Give short answers."}, weight=0.5),
+        Variant("default", {"system": "You are a helpful assistant."}, weight=0.5),
+        Variant(
+            "concise",
+            {"system": "You are a concise, precise assistant. Give short answers."},
+            weight=0.5,
+        ),
     ],
 }
 
@@ -167,7 +171,9 @@ class ABRouter:
         assignment_id = str(uuid.uuid4())
         with self._conn() as conn:
             conn.execute(
-                "INSERT INTO ab_assignments (id, experiment, variant, session_id, created_at) VALUES (?,?,?,?,?)",
+                "INSERT INTO ab_assignments "
+                "(id, experiment, variant, session_id, created_at) "
+                "VALUES (?,?,?,?,?)",
                 (assignment_id, experiment, chosen.name, session_id, int(time.time())),
             )
 
@@ -196,7 +202,9 @@ class ABRouter:
         """
         with self._conn() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO ab_outcomes (assignment_id, score, feedback, recorded_at) VALUES (?,?,?,?)",
+                "INSERT OR REPLACE INTO ab_outcomes "
+                "(assignment_id, score, feedback, recorded_at) "
+                "VALUES (?,?,?,?)",
                 (assignment_id, score, feedback, int(time.time())),
             )
 
@@ -221,10 +229,10 @@ class ABRouter:
         results = {}
         for row in rows:
             results[row["variant"]] = {
-                "n":            row["n"],
-                "avg_score":    round(row["avg_score"], 4) if row["avg_score"] else None,
+                "n": row["n"],
+                "avg_score": round(row["avg_score"], 4) if row["avg_score"] else None,
                 "avg_feedback": round(row["avg_feedback"], 2) if row["avg_feedback"] else None,
-                "scored":       row["scored"],
+                "scored": row["scored"],
             }
 
         return {"experiment": experiment, "variants": results}

@@ -19,13 +19,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import structlog
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import (
+    Docx2txtLoader,
     PyPDFLoader,
     TextLoader,
-    Docx2txtLoader,
 )
 from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance,
@@ -125,6 +125,7 @@ async def ingest_file(
 
     # Lưu tạm file ra disk để loader đọc
     import tempfile
+
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
         tmp.write(file_bytes)
         tmp_path = Path(tmp.name)

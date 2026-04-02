@@ -15,7 +15,7 @@ Usage:
     # → ModelParams(ctx_size=8192, temperature=0.2, max_tokens=4096)
 """
 
-from enum import Enum
+from enum import StrEnum
 
 import structlog
 from pydantic import BaseModel
@@ -30,7 +30,7 @@ _REASON_KEYWORDS = {"explain", "analyze", "compare", "evaluate", "why", "how doe
 _AGENT_KEYWORDS = {"search", "find", "research", "calculate", "query", "run", "execute"}
 
 
-class TaskComplexity(str, Enum):
+class TaskComplexity(StrEnum):
     SIMPLE = "simple"
     COMPLEX = "complex"
     AGENT = "agent"

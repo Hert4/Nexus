@@ -48,6 +48,7 @@ def get_langfuse_callback():
 
     try:
         from langfuse.callback import CallbackHandler  # type: ignore
+
         handler = CallbackHandler(
             public_key=public_key,
             secret_key=secret_key,
@@ -89,6 +90,7 @@ class TraceContext:
 
             if all([host, public_key, secret_key]):
                 from langfuse import Langfuse  # type: ignore
+
                 lf = Langfuse(
                     public_key=public_key,
                     secret_key=secret_key,

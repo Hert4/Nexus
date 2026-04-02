@@ -40,17 +40,20 @@ RAG_SYSTEM_PROMPT = """You are a helpful assistant that answers questions based 
 Rules:
 1. Answer ONLY based on the context below. Do NOT use outside knowledge.
 2. Always cite your sources using [filename, page X] format.
-3. If the context doesn't contain enough information, say "I don't have enough information to answer this question."
+3. If the context doesn't contain enough information,
+   say "I don't have enough information to answer this question."
 4. Be concise and clear.
 
 Context:
 {context}
 """
 
-RAG_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", RAG_SYSTEM_PROMPT),
-    ("human", "{question}"),
-])
+RAG_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        ("system", RAG_SYSTEM_PROMPT),
+        ("human", "{question}"),
+    ]
+)
 
 
 def _format_docs(docs: list[Document]) -> str:

@@ -12,11 +12,13 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from src.agents.state import AgentState
 from src.core.llm import LLMClient
-from src.core.model_router import TaskComplexity, router as model_router
+from src.core.model_router import TaskComplexity
+from src.core.model_router import router as model_router
 
 logger = structlog.get_logger(__name__)
 
-PLANNER_PROMPT = """You are a task planning assistant. Break down the given task into clear, actionable steps.
+PLANNER_PROMPT = """You are a task planning assistant.
+Break down the given task into clear, actionable steps.
 
 Task: {task}
 
@@ -67,6 +69,9 @@ async def planner_node(state: AgentState) -> dict:
         "current_step": 0,
         "messages": [
             HumanMessage(content=task),
-            AIMessage(content=f"Plan created with {len(plan)} steps:\n" + "\n".join(f"{i+1}. {s}" for i, s in enumerate(plan))),
+            AIMessage(
+                content=f"Plan created with {len(plan)} steps:\n"
+                + "\n".join(f"{i + 1}. {s}" for i, s in enumerate(plan))
+            ),
         ],
     }

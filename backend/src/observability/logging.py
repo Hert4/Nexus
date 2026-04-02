@@ -36,7 +36,8 @@ def setup_logging(log_level: str = "INFO") -> None:
     structlog.configure(
         processors=[
             *shared_processors,
-            structlog.dev.ConsoleRenderer() if log_level.upper() == "DEBUG"
+            structlog.dev.ConsoleRenderer()
+            if log_level.upper() == "DEBUG"
             else structlog.processors.JSONRenderer(),
         ],
         wrapper_class=structlog.make_filtering_bound_logger(level),

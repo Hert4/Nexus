@@ -22,9 +22,9 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from src.core.guardrails import check_input, chat_limiter
+from src.core.guardrails import chat_limiter, check_input
 from src.core.llm import LLMClient
-from src.core.model_router import TaskComplexity, router as model_router
+from src.core.model_router import router as model_router
 from src.rag.chain import RAGChain
 
 logger = structlog.get_logger(__name__)
@@ -74,11 +74,13 @@ async def chat(req: ChatRequest, request: Request):
         raise HTTPException(400, f"Input rejected: {check.reason}")
 
     message_id = str(uuid.uuid4())[:8]
-    logger.info("Chat request",
-                message_id=message_id,
-                use_rag=req.use_rag,
-                stream=req.stream,
-                msg_len=len(req.message))
+    logger.info(
+        "Chat request",
+        message_id=message_id,
+        use_rag=req.use_rag,
+        stream=req.stream,
+        msg_len=len(req.message),
+    )
 
     if req.use_rag:
         chain = RAGChain()

@@ -16,7 +16,8 @@ logger = structlog.get_logger(__name__)
 
 MAX_RETRIES = 2
 
-REVIEWER_PROMPT = """You are a quality reviewer. Evaluate if the research/work adequately answers the task.
+REVIEWER_PROMPT = """You are a quality reviewer.
+Evaluate if the research/work adequately answers the task.
 
 Original task: {task}
 
@@ -65,10 +66,7 @@ async def reviewer_node(state: AgentState) -> dict:
     logger.info("Reviewer node", retry_count=retry_count)
 
     # Tóm tắt work đã làm
-    work_summary = "\n\n".join(
-        f"[{r['tool']}]: {r.get('result', '')[:400]}"
-        for r in tool_results
-    )
+    work_summary = "\n\n".join(f"[{r['tool']}]: {r.get('result', '')[:400]}" for r in tool_results)
 
     # Nếu đã retry đủ lần → force PASS với best effort answer
     if retry_count >= MAX_RETRIES:

@@ -116,18 +116,22 @@ async def agent_websocket(websocket: WebSocket):
                     if msgs:
                         last = msgs[-1]
                         summary = getattr(last, "content", str(last))[:500]
-                await send({
-                    "event": "node_complete",
-                    "node": name,
-                    "output": summary,
-                })
+                await send(
+                    {
+                        "event": "node_complete",
+                        "node": name,
+                        "output": summary,
+                    }
+                )
 
             elif kind == "on_tool_start":
-                await send({
-                    "event": "tool_call",
-                    "tool": name,
-                    "input": str(event.get("data", {}).get("input", ""))[:200],
-                })
+                await send(
+                    {
+                        "event": "tool_call",
+                        "tool": name,
+                        "input": str(event.get("data", {}).get("input", ""))[:200],
+                    }
+                )
 
         # Lấy final state bằng ainvoke
         final = await agent_graph.ainvoke(state)

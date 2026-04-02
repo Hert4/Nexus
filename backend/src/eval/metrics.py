@@ -10,7 +10,7 @@ Usage:
 
 import random
 import statistics
-from typing import Sequence
+from collections.abc import Sequence
 
 
 def bootstrap_ci(
@@ -76,11 +76,11 @@ def summarize_scores(results: list[dict]) -> dict:
             "n": len(values),
         }
 
-    completion  = [r["score_completion"]  for r in results if r.get("score_completion") is not None]
-    quality     = [r["score_quality"]     for r in results if r.get("score_quality")     is not None]
-    faithfulness= [r["score_faithful"]    for r in results if r.get("score_faithful")    is not None]
-    avg_scores  = [r["score_avg"]         for r in results if r.get("score_avg")         is not None]
-    latencies   = [r["latency_s"]         for r in results if r.get("latency_s")         is not None]
+    completion = [r["score_completion"] for r in results if r.get("score_completion") is not None]
+    quality = [r["score_quality"] for r in results if r.get("score_quality") is not None]
+    faithfulness = [r["score_faithful"] for r in results if r.get("score_faithful") is not None]
+    avg_scores = [r["score_avg"] for r in results if r.get("score_avg") is not None]
+    latencies = [r["latency_s"] for r in results if r.get("latency_s") is not None]
 
     # Per-category
     by_category: dict[str, list[float]] = {}
@@ -91,14 +91,12 @@ def summarize_scores(results: list[dict]) -> dict:
 
     return {
         "n": len(results),
-        "completion":   _stats(completion),
-        "quality":      _stats(quality),
+        "completion": _stats(completion),
+        "quality": _stats(quality),
         "faithfulness": _stats(faithfulness),
-        "overall":      _stats(avg_scores),
-        "latency_s":    _stats(latencies),
-        "by_category": {
-            cat: _stats(vals) for cat, vals in by_category.items()
-        },
+        "overall": _stats(avg_scores),
+        "latency_s": _stats(latencies),
+        "by_category": {cat: _stats(vals) for cat, vals in by_category.items()},
     }
 
 
@@ -117,7 +115,7 @@ def compare_runs(run_a: list[dict], run_b: list[dict]) -> dict:
 
     mean_a = statistics.mean(a_scores)
     mean_b = statistics.mean(b_scores)
-    delta  = mean_b - mean_a
+    delta = mean_b - mean_a
 
     # CI overlap check (rough significance)
     lo_a, hi_a = bootstrap_ci(a_scores)
@@ -125,12 +123,12 @@ def compare_runs(run_a: list[dict], run_b: list[dict]) -> dict:
     overlap = lo_b <= hi_a and lo_a <= hi_b
 
     return {
-        "mean_a":       round(mean_a, 4),
-        "mean_b":       round(mean_b, 4),
-        "delta":        round(delta, 4),
-        "winner":       "B" if delta > 0 else ("A" if delta < 0 else "tie"),
-        "ci_a":         (round(lo_a, 4), round(hi_a, 4)),
-        "ci_b":         (round(lo_b, 4), round(hi_b, 4)),
-        "ci_overlap":   overlap,
-        "significant":  not overlap,  # rough: non-overlapping CI → likely significant
+        "mean_a": round(mean_a, 4),
+        "mean_b": round(mean_b, 4),
+        "delta": round(delta, 4),
+        "winner": "B" if delta > 0 else ("A" if delta < 0 else "tie"),
+        "ci_a": (round(lo_a, 4), round(hi_a, 4)),
+        "ci_b": (round(lo_b, 4), round(hi_b, 4)),
+        "ci_overlap": overlap,
+        "significant": not overlap,  # rough: non-overlapping CI → likely significant
     }

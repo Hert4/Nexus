@@ -13,7 +13,7 @@ Usage:
 """
 
 import structlog
-from openai import AsyncOpenAI, APIConnectionError
+from openai import APIConnectionError, AsyncOpenAI
 
 from src.config import settings
 
@@ -62,7 +62,9 @@ class EmbeddingClient:
                 encoding_format="float",
             )
             vectors = [item.embedding for item in sorted(response.data, key=lambda x: x.index)]
-            logger.debug("Embedding done", count=len(vectors), dim=len(vectors[0]) if vectors else 0)
+            logger.debug(
+                "Embedding done", count=len(vectors), dim=len(vectors[0]) if vectors else 0
+            )
             return vectors
         except APIConnectionError as e:
             logger.error("Embedding connection error", error=str(e))
@@ -96,10 +98,12 @@ class NexusEmbeddings(Embeddings):
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         """Synchronous — LangChain yêu cầu. Dùng asyncio.run nếu cần."""
         import asyncio
+
         return asyncio.get_event_loop().run_until_complete(self._client.embed(texts))
 
     def embed_query(self, text: str) -> list[float]:
         import asyncio
+
         return asyncio.get_event_loop().run_until_complete(self._client.embed_one(text))
 
     async def aembed_documents(self, texts: list[str]) -> list[list[float]]:

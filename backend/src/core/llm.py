@@ -17,7 +17,7 @@ Usage:
 from collections.abc import AsyncGenerator
 
 import structlog
-from openai import AsyncOpenAI, APIConnectionError, APITimeoutError
+from openai import APIConnectionError, APITimeoutError, AsyncOpenAI
 
 from src.config import settings
 
@@ -66,7 +66,9 @@ class LLMClient:
                 stream=False,
             )
             content = response.choices[0].message.content or ""
-            logger.debug("LLM chat done", tokens=response.usage.total_tokens if response.usage else 0)
+            logger.debug(
+                "LLM chat done", tokens=response.usage.total_tokens if response.usage else 0
+            )
             return content
         except (APIConnectionError, APITimeoutError) as e:
             logger.error("LLM connection error", error=str(e))

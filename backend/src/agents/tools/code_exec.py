@@ -71,7 +71,7 @@ def execute_python(code: str) -> str:
         else:
             err = result.stderr.strip()
             # Bỏ sandbox header lines khỏi traceback để clean hơn
-            err_lines = [l for l in err.splitlines() if "sandbox" not in l.lower()]
+            err_lines = [line for line in err.splitlines() if "sandbox" not in line.lower()]
             return "Error:\n" + "\n".join(err_lines)
 
     except subprocess.TimeoutExpired:

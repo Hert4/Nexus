@@ -10,7 +10,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import chat, documents, health, agents, feedback
+from src.api.routes import agents, chat, documents, feedback, health
 from src.config import settings
 from src.observability.logging import setup_logging
 from src.observability.metrics import setup_metrics

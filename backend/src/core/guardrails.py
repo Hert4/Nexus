@@ -36,7 +36,9 @@ logger = structlog.get_logger(__name__)
 # Patterns phổ biến trong prompt injection attacks
 _INJECTION_PATTERNS: list[re.Pattern] = [
     # "ignore [all/previous/above] [previous] instructions/prompts/context"
-    re.compile(r"ignore\s+(?:all\s+)?(?:previous\s+|above\s+)?(instructions?|prompts?|context)", re.I),
+    re.compile(
+        r"ignore\s+(?:all\s+)?(?:previous\s+|above\s+)?(instructions?|prompts?|context)", re.I
+    ),
     re.compile(r"you\s+are\s+now\s+", re.I),
     re.compile(r"forget\s+(?:everything|all|previous)", re.I),
     re.compile(r"new\s+(?:role|persona|instructions?|task):", re.I),
@@ -67,7 +69,7 @@ _MIN_RESPONSE_TOKENS = 5  # rough word count
 class InputCheckResult:
     safe: bool
     reason: str = ""
-    risk_level: str = "low"   # low | medium | high
+    risk_level: str = "low"  # low | medium | high
 
 
 def check_input(text: str, max_length: int = 4000) -> InputCheckResult:
@@ -145,6 +147,7 @@ class RateLimiter:
         max_requests: Max requests per window
         window_seconds: Window size in seconds
     """
+
     max_requests: int = 20
     window_seconds: int = 60
     _buckets: dict[str, list[float]] = field(default_factory=dict, repr=False)
@@ -178,6 +181,6 @@ class RateLimiter:
 
 
 # Singleton limiters cho các endpoint khác nhau
-chat_limiter   = RateLimiter(max_requests=30, window_seconds=60)
-agent_limiter  = RateLimiter(max_requests=10, window_seconds=60)
-eval_limiter   = RateLimiter(max_requests=5,  window_seconds=300)
+chat_limiter = RateLimiter(max_requests=30, window_seconds=60)
+agent_limiter = RateLimiter(max_requests=10, window_seconds=60)
+eval_limiter = RateLimiter(max_requests=5, window_seconds=300)

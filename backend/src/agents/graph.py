@@ -30,8 +30,16 @@ logger = structlog.get_logger(__name__)
 
 # Keywords để quyết định có cần coder node không
 _CODE_TASK_KEYWORDS = {
-    "code", "script", "program", "function", "implement",
-    "calculate", "compute", "algorithm", "python", "debug",
+    "code",
+    "script",
+    "program",
+    "function",
+    "implement",
+    "calculate",
+    "compute",
+    "algorithm",
+    "python",
+    "debug",
 }
 
 

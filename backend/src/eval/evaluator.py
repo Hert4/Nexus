@@ -35,7 +35,8 @@ logger = structlog.get_logger(__name__)
 # Số lần judge mỗi case (multi-judge consensus)
 N_JUDGES = 3
 
-JUDGE_PROMPT = """You are an expert evaluator for AI-generated answers. Score the response on three axes.
+JUDGE_PROMPT = """You are an expert evaluator for AI-generated answers.
+Score the response on three axes.
 
 QUESTION: {query}
 EXPECTED ANSWER (reference): {expected}
@@ -99,9 +100,7 @@ class Evaluator:
         actual: str,
     ) -> tuple[dict[str, float] | None, str]:
         """1 lần judge. Returns (scores_or_None, raw_text)."""
-        prompt = JUDGE_PROMPT.format(
-            query=query, expected=expected, actual=actual
-        )
+        prompt = JUDGE_PROMPT.format(query=query, expected=expected, actual=actual)
         try:
             raw = await self.llm.chat(
                 prompt=prompt,
@@ -197,11 +196,11 @@ class Evaluator:
             "case_id": case["id"],
             "category": case.get("category", ""),
             "query": query[:80],
-            "score_completion":  scores["completion"],
-            "score_quality":     scores["quality"],
-            "score_faithful":    scores["faithfulness"],
+            "score_completion": scores["completion"],
+            "score_quality": scores["quality"],
+            "score_faithful": scores["faithfulness"],
             "score_avg": sum(scores.values()) / 3,
-            "latency_s":         latency,
+            "latency_s": latency,
         }
 
     async def run_full_eval(
@@ -249,9 +248,11 @@ class Evaluator:
         summary["model"] = model
         summary["failed"] = failed
 
-        logger.info("Eval run complete",
-                    run_id=run_id,
-                    n=len(valid),
-                    avg=round(summary.get("overall", {}).get("mean", 0), 3))
+        logger.info(
+            "Eval run complete",
+            run_id=run_id,
+            n=len(valid),
+            avg=round(summary.get("overall", {}).get("mean", 0), 3),
+        )
 
         return summary

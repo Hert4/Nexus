@@ -11,12 +11,14 @@ from langchain_core.messages import AIMessage
 from src.agents.state import AgentState
 from src.agents.tools.search import web_search
 from src.core.llm import LLMClient
-from src.core.model_router import TaskComplexity, router as model_router
+from src.core.model_router import TaskComplexity
+from src.core.model_router import router as model_router
 from src.rag.retriever import HybridRetriever
 
 logger = structlog.get_logger(__name__)
 
-RESEARCHER_PROMPT = """You are a research assistant. Based on the information gathered, provide a comprehensive answer.
+RESEARCHER_PROMPT = """You are a research assistant.
+Based on the information gathered, provide a comprehensive answer.
 
 Task: {task}
 Current step: {step}
@@ -53,10 +55,11 @@ async def researcher_node(state: AgentState) -> dict:
         docs = await retriever.retrieve(current_step, top_k=3)
         if docs:
             rag_context = "\n\n".join(
-                f"[{d.metadata.get('source_filename', 'doc')}]\n{d.page_content}"
-                for d in docs
+                f"[{d.metadata.get('source_filename', 'doc')}]\n{d.page_content}" for d in docs
             )
-            tool_results.append({"tool": "rag_retriever", "query": current_step, "result": rag_context[:500]})
+            tool_results.append(
+                {"tool": "rag_retriever", "query": current_step, "result": rag_context[:500]}
+            )
     except Exception as e:
         logger.warning("RAG retrieval failed", error=str(e))
         rag_context = "(RAG unavailable)"
@@ -66,7 +69,9 @@ async def researcher_node(state: AgentState) -> dict:
     try:
         search_result = web_search.invoke(current_step)
         search_context = search_result
-        tool_results.append({"tool": "web_search", "query": current_step, "result": search_result[:500]})
+        tool_results.append(
+            {"tool": "web_search", "query": current_step, "result": search_result[:500]}
+        )
     except Exception as e:
         logger.warning("Web search failed", error=str(e))
         search_context = "(Web search unavailable)"

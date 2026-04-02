@@ -28,6 +28,7 @@ _eval_runs: dict[str, dict] = {}
 
 # ── Pydantic models ────────────────────────────────────────────────────────────
 
+
 class FeedbackRequest(BaseModel):
     message_id: str = Field(..., description="ID của message cần feedback")
     rating: int = Field(..., ge=1, le=5, description="Rating 1–5")
@@ -56,6 +57,7 @@ class EvalRunResponse(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+
 @router.post("/feedback", response_model=FeedbackResponse, status_code=201)
 async def submit_feedback(req: FeedbackRequest):
     """
@@ -68,10 +70,12 @@ async def submit_feedback(req: FeedbackRequest):
     feedback_id = str(uuid.uuid4())[:8]
     db = EvalDataset()
 
-    logger.info("Feedback received",
-                feedback_id=feedback_id,
-                rating=req.rating,
-                message_id=req.message_id[:20])
+    logger.info(
+        "Feedback received",
+        feedback_id=feedback_id,
+        rating=req.rating,
+        message_id=req.message_id[:20],
+    )
 
     # Record A/B outcome nếu có
     if req.assignment_id:
@@ -85,8 +89,9 @@ async def submit_feedback(req: FeedbackRequest):
 
     # Auto-expand eval dataset từ bad responses (rating <= 2)
     if req.rating <= 2 and req.query and req.response:
-        logger.info("Low-rating response added to eval dataset",
-                    rating=req.rating, query=req.query[:60])
+        logger.info(
+            "Low-rating response added to eval dataset", rating=req.rating, query=req.query[:60]
+        )
         db.add_case(
             query=req.query,
             expected="[From user feedback — needs review]",

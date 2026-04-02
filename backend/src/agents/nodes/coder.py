@@ -11,11 +11,13 @@ from langchain_core.messages import AIMessage
 from src.agents.state import AgentState
 from src.agents.tools.code_exec import execute_python
 from src.core.llm import LLMClient
-from src.core.model_router import TaskComplexity, router as model_router
+from src.core.model_router import TaskComplexity
+from src.core.model_router import router as model_router
 
 logger = structlog.get_logger(__name__)
 
-CODER_PROMPT = """You are an expert Python programmer. Write clean, working Python code to solve the task.
+CODER_PROMPT = """You are an expert Python programmer.
+Write clean, working Python code to solve the task.
 
 Task: {task}
 Context from research: {context}
@@ -41,14 +43,15 @@ async def coder_node(state: AgentState) -> dict:
 
     # Lấy research context từ tool_results
     context = "\n".join(
-        r["result"] for r in tool_results
+        r["result"]
+        for r in tool_results
         if r.get("tool") in ("researcher_synthesis", "rag_retriever")
     )[:1000]
 
     logger.info("Coder node", task=task[:80])
 
     # 1. Generate code
-    params = model_router.route(task, force_complexity=TaskComplexity.COMPLEX)
+    model_router.route(task, force_complexity=TaskComplexity.COMPLEX)
     llm = LLMClient()
 
     code = await llm.chat(
@@ -70,13 +73,17 @@ async def coder_node(state: AgentState) -> dict:
     exec_result = execute_python.invoke(code)
     logger.info("Code executed", result=exec_result[:100])
 
-    tool_results.append({
-        "tool": "coder",
-        "code": code,
-        "result": exec_result,
-    })
+    tool_results.append(
+        {
+            "tool": "coder",
+            "code": code,
+            "result": exec_result,
+        }
+    )
 
     return {
         "tool_results": tool_results,
-        "messages": [AIMessage(content=f"Code executed:\n```python\n{code}\n```\nOutput: {exec_result}")],
+        "messages": [
+            AIMessage(content=f"Code executed:\n```python\n{code}\n```\nOutput: {exec_result}")
+        ],
     }

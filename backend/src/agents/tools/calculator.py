@@ -37,14 +37,19 @@ def calculator(expression: str) -> str:
     # Safe namespace — chỉ cho phép math functions
     safe_ns: dict = {
         "__builtins__": {},
-        "abs": abs, "round": round, "min": min, "max": max,
-        "sum": sum, "pow": pow,
+        "abs": abs,
+        "round": round,
+        "min": min,
+        "max": max,
+        "sum": sum,
+        "pow": pow,
         **{k: v for k, v in vars(math).items() if not k.startswith("_")},
     }
 
     try:
         # Thử numexpr trước (nhanh hơn cho vector math)
         import numexpr as ne
+
         result = ne.evaluate(expression)
         return str(float(result))
     except Exception:
