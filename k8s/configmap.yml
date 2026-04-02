@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexus-config
+  namespace: nexus-ai
+data:
+  # llama-server chạy native trên host — dùng Node IP thực tế, không phải host.docker.internal
+  # Lấy Node IP: kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
+  LLAMACPP_CHAT_URL: "http://10.1.42.21:8080/v1"
+  LLAMACPP_EMBED_URL: "http://10.1.42.21:8081/v1"
+
+  GGUF_CHAT_MODEL: "Qwen3.5-9B.Q6_K.gguf"
+  GGUF_EMBED_MODEL: "nomic-embed-text-v1.5.Q4_K_M.gguf"
+
+  # Qdrant trong cùng namespace
+  QDRANT_URL: "http://qdrant-service:6333"
+  QDRANT_COLLECTION: "nexus_docs"
+
+  # App
+  APP_ENV: "production"
+  LOG_LEVEL: "INFO"
+  CORS_ORIGINS: '["http://localhost:5173","http://localhost:3000"]'
+
+  # RAG
+  CHUNK_SIZE: "512"
+  CHUNK_OVERLAP: "50"
+  RETRIEVER_TOP_K: "5"
+
+  # JWT
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRE_MINUTES: "1440"

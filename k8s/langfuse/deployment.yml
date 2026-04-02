@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse
+  namespace: nexus-ai
+  labels:
+    app: langfuse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: langfuse
+  template:
+    metadata:
+      labels:
+        app: langfuse
+    spec:
+      initContainers:
+        # Chờ PostgreSQL sẵn sàng trước khi start Langfuse
+        - name: wait-postgres
+          image: busybox:1.36
+          command: ["sh", "-c", "until nc -z langfuse-postgres 5432; do echo waiting; sleep 2; done"]
+      containers:
+        - name: langfuse
+          image: ghcr.io/langfuse/langfuse:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://langfuse:langfuse_password@langfuse-postgres:5432/langfuse"
+            - name: NEXTAUTH_SECRET
+              value: "change-me-langfuse-secret"
+            - name: NEXTAUTH_URL
+              value: "http://localhost:3002"
+            - name: SALT
+              value: "change-me-salt"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /api/public/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 10

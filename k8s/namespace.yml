@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nexus-ai
+  labels:
+    app.kubernetes.io/name: nexus-ai
+    app.kubernetes.io/managed-by: helm

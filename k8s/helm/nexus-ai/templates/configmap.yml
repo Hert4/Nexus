@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nexus-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "nexus-ai.labels" . | nindent 4 }}
+data:
+  LLAMACPP_CHAT_URL: {{ .Values.config.llamacppChatUrl | quote }}
+  LLAMACPP_EMBED_URL: {{ .Values.config.llamacppEmbedUrl | quote }}
+  GGUF_CHAT_MODEL: {{ .Values.config.ggufChatModel | quote }}
+  GGUF_EMBED_MODEL: {{ .Values.config.ggufEmbedModel | quote }}
+  QDRANT_URL: "http://qdrant-service:{{ .Values.qdrant.service.port }}"
+  QDRANT_COLLECTION: {{ .Values.config.qdrantCollection | quote }}
+  APP_ENV: {{ .Values.config.appEnv | quote }}
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  CORS_ORIGINS: {{ .Values.config.corsOrigins | quote }}
+  CHUNK_SIZE: {{ .Values.config.chunkSize | quote }}
+  CHUNK_OVERLAP: {{ .Values.config.chunkOverlap | quote }}
+  RETRIEVER_TOP_K: {{ .Values.config.retrieverTopK | quote }}
+  JWT_ALGORITHM: {{ .Values.config.jwtAlgorithm | quote }}
+  JWT_EXPIRE_MINUTES: {{ .Values.config.jwtExpireMinutes | quote }}
+  {{- if .Values.langfuse.enabled }}
+  LANGFUSE_HOST: "http://langfuse-service:3000"
+  {{- end }}

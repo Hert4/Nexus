@@ -1,0 +1,15 @@
+apiVersion: v2
+name: nexus-ai
+description: Nexus AI — Local RAG + Agent Platform (Helm Chart)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai
+  - rag
+  - llm
+  - langchain
+  - langgraph
+home: https://github.com/nexus-ai
+maintainers:
+  - name: nexus-ai

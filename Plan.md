@@ -9,8 +9,10 @@ Build một **production-grade AI Assistant platform** chạy hoàn toàn local 
 ## HARDWARE & CONSTRAINTS
 
 - GPU: RTX 4070 Super 12GB VRAM
-- Model serving: Ollama (OpenAI-compatible endpoint tại `http://localhost:11434/v1`)
-- Models: Qwen2.5-7B-Instruct (chính), Qwen2.5-3B (fallback nhẹ), nomic-embed-text (embedding)
+- Model serving: **llama.cpp** (`llama-server` — OpenAI-compatible endpoint tại `http://localhost:8080/v1`)
+- **Model chính**: `Qwen3.5-9B.Q6_K.gguf` — symlink tại `nexus-ai/models/` → `/home/dev/Develop_2026/gguf/` (không tốn disk thêm)
+- **Model embedding**: `nomic-embed-text-v1.5.Q4_K_M.gguf` — symlink tại `nexus-ai/models/` → `/home/dev/Develop_2026/gguf/` (81MB, đã có sẵn)
+- llama-server chạy với `--n-gpu-layers 99` để offload toàn bộ lên VRAM
 - Tất cả service giao tiếp qua OpenAI-compatible API format (`/v1/chat/completions`, `/v1/embeddings`)
 
 -----
@@ -36,10 +38,10 @@ Build một **production-grade AI Assistant platform** chạy hoàn toàn local 
 │  └──────┬──────┘  └──────┬───────┘  └───────┬───────┘  │
 │         │                │                   │          │
 │  ┌──────▼──────┐  ┌──────▼───────┐  ┌───────▼───────┐  │
-│  │  Qdrant     │  │  Tool Suite  │  │   Ollama      │  │
-│  │  Vector DB  │  │  (Search,    │  │   (OpenAI     │  │
-│  │  (Hybrid    │  │   Code Exec, │  │    Compatible)│  │
-│  │   Search)   │  │   DB Query)  │  │               │  │
+│  │  Qdrant     │  │  Tool Suite  │  │  llama.cpp    │  │
+│  │  Vector DB  │  │  (Search,    │  │  llama-server │  │
+│  │  (Hybrid    │  │   Code Exec, │  │  (OpenAI      │  │
+│  │   Search)   │  │   DB Query)  │  │   Compatible) │  │
 │  └─────────────┘  └──────────────┘  └───────────────┘  │
 │                                                         │
 ├─────────────────────────────────────────────────────────┤
@@ -64,10 +66,10 @@ nexus-ai/
 │
 ├── k8s/                        # Kubernetes manifests
 │   ├── namespace.yml
-│   ├── ollama/
+│   ├── llamacpp/
 │   │   ├── deployment.yml
 │   │   ├── service.yml
-│   │   └── pvc.yml             # PersistentVolume cho models
+│   │   └── pvc.yml             # PersistentVolume cho models (GGUF files)
 │   ├── qdrant/
 │   │   ├── statefulset.yml
 │   │   └── service.yml
@@ -159,9 +161,9 @@ nexus-ai/
 │   │       └── client.ts
 │   └── tailwind.config.js
 │
-├── scripts/
+│   ├── scripts/
 │   ├── setup.sh                # One-command setup
-│   ├── pull-models.sh          # ollama pull qwen2.5:7b-instruct etc.
+│   ├── download-models.sh      # Hướng dẫn download GGUF từ HuggingFace
 │   ├── seed-documents.sh       # Ingest sample docs
 │   └── run-eval.sh             # Run evaluation suite
 │
@@ -180,27 +182,29 @@ nexus-ai/
 ```
 Tạo project nexus-ai theo structure ở trên. Phase 1 focus vào:
 
-1. **Ollama integration (OpenAI-compatible)**:
+1. **llama.cpp integration (OpenAI-compatible)**:
    - File: backend/src/core/llm.py
-   - Dùng `openai` Python SDK trỏ đến Ollama endpoint
+   - Dùng `openai` Python SDK trỏ đến llama-server endpoint
    - Wrapper class `LLMClient` với:
-     - base_url = "http://ollama:11434/v1" (docker) hoặc "http://localhost:11434/v1"
+     - base_url = "http://llamacpp:8080/v1" (docker) hoặc "http://localhost:8080/v1"
      - Hỗ trợ streaming via SSE
-     - Model selection: qwen2.5:7b-instruct (default), qwen2.5:3b (fallback)
+     - Model selection: qwen2.5-7b (default), qwen2.5-3b (fallback)
+     - llama-server chạy riêng cho chat model và embedding model (2 process hoặc 2 container)
 
    ```python
    from openai import OpenAI
    
    client = OpenAI(
-       base_url="http://localhost:11434/v1",
-       api_key="ollama"  # Ollama không cần key nhưng SDK require
+       base_url="http://localhost:8080/v1",
+       api_key="llama-cpp"  # llama-server không cần key nhưng SDK require
    )
 ```
 
 1. **Embedding service**:
 - File: backend/src/core/embeddings.py
-- Dùng Ollama endpoint cho nomic-embed-text
-- LangChain `OllamaEmbeddings` hoặc OpenAI-compatible embeddings endpoint
+- Dùng llama-server thứ 2 (hoặc port riêng) load `nomic-embed-text-v1.5.Q4_K_M.gguf`
+- llama-server chạy với flag `--embedding --pooling mean`
+- Gọi qua OpenAI-compatible `/v1/embeddings` endpoint (base_url = "http://localhost:8081/v1")
 - Output: 768-dim vectors
 1. **Qdrant Vector DB**:
 - Docker: qdrant/qdrant:latest, port 6333
@@ -243,11 +247,35 @@ Tạo project nexus-ai theo structure ở trên. Phase 1 focus vào:
    
    ```yaml
    services:
-     ollama:
-       image: ollama/ollama:latest
-       ports: ["11434:11434"]
+     llamacpp-chat:
+       image: ghcr.io/ggerganov/llama.cpp:server-cuda
+       ports: ["8080:8080"]
        volumes:
-         - ollama_data:/root/.ollama
+         - ./models:/models:ro
+       command: >
+         -m /models/Qwen3.5-9B.Q6_K.gguf
+         --host 0.0.0.0 --port 8080
+         --n-gpu-layers 99
+         --ctx-size 8192
+         --parallel 4
+       deploy:
+         resources:
+           reservations:
+             devices:
+               - driver: nvidia
+                 count: 1
+                 capabilities: [gpu]
+   
+     llamacpp-embed:
+       image: ghcr.io/ggerganov/llama.cpp:server-cuda
+       ports: ["8081:8081"]
+       volumes:
+         - ./models:/models:ro
+       command: >
+         -m /models/nomic-embed-text-v1.5.Q4_K_M.gguf
+         --host 0.0.0.0 --port 8081
+         --n-gpu-layers 99
+         --embedding --pooling mean
        deploy:
          resources:
            reservations:
@@ -266,12 +294,11 @@ Tạo project nexus-ai theo structure ở trên. Phase 1 focus vào:
        build: ./backend
        ports: ["8000:8000"]
        env_file: .env
-       depends_on: [ollama, qdrant]
+       depends_on: [llamacpp-chat, llamacpp-embed, qdrant]
        volumes:
          - ./backend/src:/app/src  # Hot reload
    
    volumes:
-     ollama_data:
      qdrant_data:
    ```
 1. **Makefile**:
@@ -283,11 +310,11 @@ Tạo project nexus-ai theo structure ở trên. Phase 1 focus vào:
        docker compose down
    logs:
        docker compose logs -f api
+   logs-chat:
+       docker compose logs -f llamacpp-chat
    setup:
-       docker compose up -d ollama
-       docker exec ollama ollama pull qwen2.5:7b-instruct
-       docker exec ollama ollama pull qwen2.5:3b
-       docker exec ollama ollama pull nomic-embed-text
+       @echo "Models served from ./gguf/ directory (GGUF files already present)"
+       @ls -lh gguf/*.gguf
    test:
        cd backend && pytest tests/ -v
    ```
@@ -382,10 +409,10 @@ Thêm Agent System vào nexus-ai sử dụng LangGraph. Tất cả LLM call
 1. **Model Router**:
 - File: backend/src/core/model_router.py
 - Logic: estimate task complexity → chọn model
-  - Simple Q&A, classification → qwen2.5:3b (nhanh, tiết kiệm VRAM)
-  - Complex reasoning, code gen, agent tasks → qwen2.5:7b-instruct
-- Fallback: nếu 7B OOM hoặc timeout → retry với 3B
-- Tất cả đều qua OpenAI-compatible format
+  - Simple Q&A, classification → llama-server với ctx nhỏ hơn, batch size thấp (nhanh hơn)
+  - Complex reasoning, code gen, agent tasks → full ctx-size 8192
+- Fallback: nếu timeout hoặc quá tải → retry với params nhẹ hơn
+- Tất cả đều qua OpenAI-compatible format (base_url: http://llamacpp-chat:8080/v1)
 
 Thêm dependencies: langgraph, duckduckgo-search, numexpr, websockets
 
@@ -404,11 +431,13 @@ via minikube hoặc k3s). Thêm full monitoring stack.
    
    a. Namespace: nexus-ai
    
-   b. Ollama Deployment:
+   b. llama.cpp Deployment:
 - GPU resource request: nvidia.com/gpu: 1
-- PVC cho model storage (10Gi)
-- Liveness probe: curl http://localhost:11434/api/tags
+- PVC cho GGUF model storage (20Gi) — mount từ host hoặc PVC
+- Liveness probe: curl http://localhost:8080/health
 - Resource limits: memory 14Gi (12GB VRAM + system)
+- 2 deployments: `llamacpp-chat` (port 8080) và `llamacpp-embed` (port 8081)
+- Args: `-m /models/Qwen3.5-9B.Q6_K.gguf --n-gpu-layers 99 --ctx-size 8192`
    
    c. Qdrant StatefulSet:
 - PVC cho vector storage (20Gi)
@@ -571,15 +600,18 @@ Thêm evaluation pipeline và feedback-driven improvement vào nexus-ai.
 git clone <repo>
 cd nexus-ai
 
+# GGUF models đã có sẵn tại /home/dev/Develop_2026/gguf/
+# Nếu cần embedding model: huggingface-cli download nomic-ai/nomic-embed-text-v1.5-GGUF
+
 # Phase 1: Docker Compose
-make setup          # Pull Ollama models
-make up             # Start all services
+make setup          # Kiểm tra GGUF files có sẵn
+make up             # Start all services (llamacpp-chat :8080, llamacpp-embed :8081, qdrant, api)
 make test           # Run tests
 
 # Seed sample documents
 bash scripts/seed-documents.sh
 
-# Test chat
+# Test chat (llama-server tại port 8080)
 curl -X POST http://localhost:8000/v1/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "What is RAG?", "stream": true}'
@@ -599,10 +631,10 @@ bash scripts/run-eval.sh
 
 |Decision     |Choice          |Reason                                                 |
 |-------------|----------------|-------------------------------------------------------|
-|LLM Serving  |Ollama          |OpenAI-compatible API, easy GPU setup, model management|
+|LLM Serving  |llama.cpp (llama-server)|OpenAI-compatible API, CUDA support, GGUF format, max control over quantization & params|
 |Vector DB    |Qdrant          |Hybrid search native, lightweight, Rust-based          |
 |Orchestration|LangGraph       |State machine cho agent, hơn LangChain AgentExecutor   |
-|Embedding    |nomic-embed-text|768-dim, chạy local qua Ollama, quality tốt cho size   |
+|Embedding    |nomic-embed-text (GGUF via llama-server)|768-dim, chạy local qua llama-server --embedding, quality tốt cho size|
 |Observability|Langfuse        |Self-hosted, LangChain native integration              |
 |API          |FastAPI         |Async native, streaming support, auto-docs             |
 |Container    |Docker + K8s    |Industry standard, portfolio-worthy                    |
@@ -612,9 +644,20 @@ bash scripts/run-eval.sh
 ## NOTES CHO CLAUDE CODE
 
 - Tất cả LLM calls phải qua OpenAI SDK format → dễ swap model provider sau này
-- Không hardcode model name → dùng env var `DEFAULT_MODEL=qwen2.5:7b-instruct`
+- **Model GGUF**: symlink tại `./models/Qwen3.5-9B.Q6_K.gguf` → file thực tại `/home/dev/Develop_2026/gguf/` — không tốn disk thêm, docker compose mount `./models:/models:ro`
+- `models/*.gguf` được add vào `.gitignore` — không commit file lớn lên Git
+- Không hardcode model path → dùng env var `GGUF_MODEL_PATH=/models/Qwen3.5-9B.Q6_K.gguf`
+- llama-server base_url cho chat: `http://llamacpp-chat:8080/v1`
+- llama-server base_url cho embed: `http://llamacpp-embed:8081/v1`
 - Mọi async operation dùng `asyncio` — FastAPI native async
 - Type hints everywhere — dùng Pydantic v2 cho data models
 - Mỗi module có docstring giải thích purpose
 - Error handling: không bare except, log properly
 - Tests: mỗi module có unit test, integration test cho API routes
+- **Learning**: EVERY implement must be written in `docs/` folder for user to learn from scratch.
+  - Docs MUST be **code-linked**: mỗi concept/explanation phải reference đúng file + line number thực tế trong codebase.
+  - `docs/lessons/` — bài học step-by-step, mỗi bài = 1 concept, có code link + "Thử ngay"
+  - Thêm bài mới khi implement feature → cập nhật `docs/lessons/README.md`
+  - Ví dụ đúng: *"LLMClient khởi tạo AsyncOpenAI tại [`core/llm.py:35-42`](../backend/src/core/llm.py#L35)"*
+  - Ví dụ sai: *"LLMClient dùng openai SDK để gọi llama-server"* (không có link)
+- Update *CLAUDE.md* always is a MUST

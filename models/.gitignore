@@ -1,0 +1,5 @@
+# GGUF model files — quá lớn để commit (hàng GB)
+*.gguf
+
+# Cho phép commit .gitignore này và README nếu có
+!.gitignore

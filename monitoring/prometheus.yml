@@ -1,0 +1,39 @@
+# monitoring/prometheus.yml — Prometheus scrape configuration
+#
+# Targets:
+#   - nexus-api  : FastAPI app (prometheus-fastapi-instrumentator)
+#   - qdrant     : Vector DB native metrics
+#
+# Khi chạy trong docker-compose.monitoring.yml:
+#   nexus-api và qdrant đã nằm cùng network "nexus-network"
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: local
+
+# ── Scrape configs ─────────────────────────────────────────────────────────────
+
+scrape_configs:
+  # FastAPI app — prometheus-fastapi-instrumentator expose /metrics
+  - job_name: nexus-api
+    static_configs:
+      - targets: ["nexus-api:8000"]
+    metrics_path: /metrics
+
+  # Qdrant Vector DB — native Prometheus metrics
+  - job_name: qdrant
+    static_configs:
+      - targets: ["nexus-qdrant:6333"]
+    metrics_path: /metrics
+
+  # Prometheus tự scrape (meta-monitoring)
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Host metrics via node-exporter (optional — cài riêng nếu cần)
+  # - job_name: node-exporter
+  #   static_configs:
+  #     - targets: ["host.docker.internal:9100"]

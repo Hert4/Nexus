@@ -1,0 +1,58 @@
+# docker-compose.monitoring.yml — Prometheus + Grafana local monitoring stack
+#
+# Chạy song song với docker-compose.yml để test metrics trước khi lên K8s:
+#   docker compose -f docker-compose.monitoring.yml up -d
+#
+# Prometheus: http://localhost:9090
+# Grafana:    http://localhost:3001  (admin/admin)
+#
+# Scrape targets:
+#   - nexus-api:8000/metrics  — FastAPI app metrics
+#   - qdrant:6333/metrics     — Qdrant vector DB metrics
+#   - host.docker.internal:9182 — node-exporter (optional)
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: nexus-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: nexus-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: nexus-network
+    external: true

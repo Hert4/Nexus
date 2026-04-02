@@ -1,0 +1,138 @@
+# values.yaml — Nexus AI Helm Chart default values
+#
+# Override khi deploy:
+#   helm install nexus-ai ./k8s/helm/nexus-ai \
+#     --set api.replicas=3 \
+#     --set monitoring.enabled=true
+
+namespace: nexus-ai
+
+# ── API ────────────────────────────────────────────────────────────────────────
+api:
+  image:
+    repository: nexus-ai-api
+    tag: latest
+    pullPolicy: Never   # dùng local image trong k3s
+
+  replicas: 2
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1"
+
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilization: 70
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+  ingress:
+    enabled: true
+    className: nginx
+    host: nexus.local
+
+# ── Qdrant ────────────────────────────────────────────────────────────────────
+qdrant:
+  image: qdrant/qdrant:latest
+
+  storage: 20Gi
+  storageClass: local-path   # k3s default
+
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "2Gi"
+      cpu: "1"
+
+  service:
+    type: ClusterIP
+    port: 6333
+
+# ── Config ────────────────────────────────────────────────────────────────────
+config:
+  # llama-server chạy native trên host — dùng Node IP (không phải localhost hay host.docker.internal)
+  # Lấy Node IP: kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
+  # Override khi deploy: --set config.llamacppChatUrl=http://10.1.42.21:8080/v1
+  llamacppChatUrl: "http://10.1.42.21:8080/v1"
+  llamacppEmbedUrl: "http://10.1.42.21:8081/v1"
+  ggufChatModel: "Qwen3.5-9B.Q6_K.gguf"
+  ggufEmbedModel: "nomic-embed-text-v1.5.Q4_K_M.gguf"
+  qdrantCollection: "nexus_docs"
+  appEnv: "production"
+  logLevel: "INFO"
+  corsOrigins: '["http://localhost:5173","http://localhost:3000"]'
+  chunkSize: "512"
+  chunkOverlap: "50"
+  retrieverTopK: "5"
+  jwtAlgorithm: "HS256"
+  jwtExpireMinutes: "1440"
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+secrets:
+  llmApiKey: "llama-cpp"
+  jwtSecret: "change-me-in-production"
+  langfusePublicKey: ""
+  langfuseSecretKey: ""
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+monitoring:
+  enabled: true
+
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    retention: 15d
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+    service:
+      type: NodePort
+      nodePort: 30090
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    adminUser: admin
+    adminPassword: admin
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    service:
+      type: NodePort
+      nodePort: 30300
+
+# ── Langfuse ──────────────────────────────────────────────────────────────────
+langfuse:
+  enabled: false   # enable khi cần LLM tracing
+
+  image: ghcr.io/langfuse/langfuse:latest
+
+  postgres:
+    image: postgres:15-alpine
+    storage: 5Gi
+    storageClass: local-path
+    password: langfuse_password   # override trong production
+
+  service:
+    type: NodePort
+    nodePort: 30302
+
+  nextauthUrl: "http://localhost:3002"
+  nextauthSecret: "change-me-langfuse-secret"
+  salt: "change-me-salt"

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-service
+  namespace: nexus-ai
+  labels:
+    app: langfuse
+spec:
+  selector:
+    app: langfuse
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30302
+  type: NodePort

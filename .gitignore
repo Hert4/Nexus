@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+.venv/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Models — too large to commit
+models/*.gguf
+
+# Env
+.env
+
+# Docker
+*.log
+
+# Node
+node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# llama-server runtime
+.pids/
