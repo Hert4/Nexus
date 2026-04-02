@@ -50,6 +50,8 @@ jobs:
       LOG_LEVEL: "WARNING"
       JWT_SECRET: "test-secret"
       CORS_ORIGINS: '["http://localhost:3000"]'
+      # SQLite DBs vào /tmp thay vì /app/data (không tồn tại ngoài Docker)
+      NEXUS_DATA_DIR: "/tmp/nexus-test-data"
 
     steps:
       - uses: actions/checkout@v4

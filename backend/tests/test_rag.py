@@ -19,7 +19,11 @@ class TestEmbeddingClient:
         ]
 
         client = EmbeddingClient()
-        with patch.object(client._client.embeddings, "create", new=AsyncMock(return_value=mock_response)):
+        with patch.object(
+            client._client.embeddings,
+            "create",
+            new=AsyncMock(return_value=mock_response),
+        ):
             vectors = await client.embed(["text1", "text2"])
 
         assert len(vectors) == 2
@@ -39,6 +43,7 @@ class TestIngestion:
 
     def test_chunk_documents(self):
         from langchain_core.documents import Document
+
         from src.rag.ingestion import _chunk_documents
 
         doc = Document(page_content="word " * 200, metadata={"source_filename": "test.txt"})
@@ -50,7 +55,6 @@ class TestIngestion:
             assert "ingestion_timestamp" in chunk.metadata
 
     def test_unsupported_extension_raises(self):
-        import pytest
         from src.rag.ingestion import SUPPORTED_EXTENSIONS
 
         assert ".xyz" not in SUPPORTED_EXTENSIONS

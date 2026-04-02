@@ -1,8 +1,9 @@
 """Integration tests cho FastAPI routes."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
 
 
 @pytest.fixture
@@ -13,9 +14,10 @@ def client():
 
 class TestHealthRoute:
     def test_health_returns_200(self, client):
+        mock_ok = AsyncMock(return_value={"status": "ok"})
         with (
-            patch("src.api.routes.health._check_llamacpp", new=AsyncMock(return_value={"status": "ok"})),
-            patch("src.api.routes.health._check_qdrant", new=AsyncMock(return_value={"status": "ok"})),
+            patch("src.api.routes.health._check_llamacpp", new=mock_ok),
+            patch("src.api.routes.health._check_qdrant", new=mock_ok),
         ):
             response = client.get("/health")
         assert response.status_code == 200

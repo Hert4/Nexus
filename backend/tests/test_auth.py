@@ -1,7 +1,8 @@
 """Tests cho auth module."""
 
-import pytest
 from datetime import UTC, datetime, timedelta
+
+import pytest
 
 
 class TestJWT:
@@ -13,6 +14,7 @@ class TestJWT:
 
     def test_invalid_token_raises_401(self):
         from fastapi import HTTPException
+
         from src.auth.jwt import verify_token
         with pytest.raises(HTTPException) as exc_info:
             verify_token("invalid.token.here")
@@ -21,8 +23,9 @@ class TestJWT:
     def test_expired_token_raises_401(self):
         from fastapi import HTTPException
         from jose import jwt
-        from src.config import settings
+
         from src.auth.jwt import verify_token
+        from src.config import settings
 
         expired_payload = {
             "sub": "user123",
