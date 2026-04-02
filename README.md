@@ -1,10 +1,15 @@
 # Nexus AI
 
 **Local AI Assistant** chạy hoàn toàn offline trên GPU của bạn.  
-RAG + LangGraph Agents + Kubernetes + Monitoring — production-grade từ local machine.
+RAG + LangGraph Agents + Kubernetes + Monitoring + React UI — production-grade từ local machine.
 
 ```
 ┌─────────────────────────────────┐
+│  React UI :5173                 │
+│  ├─ Chat (SSE streaming)        │
+│  ├─ Document upload/manage      │
+│  └─ Health status badge         │
+├─────────────────────────────────┤
 │  FastAPI :8000                  │
 │  ├─ POST /v1/chat    (RAG+SSE)  │
 │  ├─ POST /v1/agents/run         │
@@ -74,10 +79,11 @@ make serve
 # → Chat:  http://localhost:8080/v1  ✓
 # → Embed: http://localhost:8081/v1  ✓
 
-# Terminal 2: Start API + Qdrant
+# Terminal 2: Start API + Qdrant + Frontend
 make up
-# → API:    http://localhost:8000    ✓
-# → Qdrant: http://localhost:6333    ✓
+# → Frontend: http://localhost:5173    ✓  ← mở browser tại đây
+# → API:      http://localhost:8000    ✓
+# → Qdrant:   http://localhost:6333    ✓
 ```
 
 ### 5. Kiểm tra
@@ -285,3 +291,4 @@ GGUF_CHAT_MODEL=gpt-4o-mini
 - ✅ Phase 2: Agent System (LangGraph)
 - ✅ Phase 3: Kubernetes + Monitoring (k3s, Helm, Prometheus, Grafana, Langfuse)
 - ✅ Phase 4: Evaluation + Guardrails + A/B Testing + Feedback loop
+- ✅ Phase 5: Frontend (React + Vite + TypeScript, SSE streaming, Document management)

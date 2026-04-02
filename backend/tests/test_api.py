@@ -14,7 +14,9 @@ def client():
 
 class TestHealthRoute:
     def test_health_returns_200(self, client):
-        mock_ok = AsyncMock(return_value={"status": "ok"})
+        from src.api.routes.health import ServiceStatus
+
+        mock_ok = AsyncMock(return_value=ServiceStatus(status="ok"))
         with (
             patch("src.api.routes.health._check_llamacpp", new=mock_ok),
             patch("src.api.routes.health._check_qdrant", new=mock_ok),

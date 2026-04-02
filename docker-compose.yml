@@ -40,5 +40,16 @@ services:
       - ./backend/src:/app/src  # Hot reload
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nexus-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   qdrant_data:

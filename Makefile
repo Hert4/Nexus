@@ -1,4 +1,4 @@
-.PHONY: up down logs logs-chat logs-embed setup serve serve-stop serve-status test lint build monitor-up monitor-down k8s-setup k8s-deploy k8s-status k8s-down eval eval-factual eval-quick help
+.PHONY: up down logs logs-chat logs-embed setup serve serve-stop serve-status test lint build monitor-up monitor-down k8s-setup k8s-deploy k8s-status k8s-down eval eval-factual eval-quick frontend-dev frontend-build help
 
 help:
 	@echo "Nexus AI — available commands:"
@@ -8,12 +8,16 @@ help:
 	@echo "  make serve-stop  Stop cả hai"
 	@echo "  make serve-status Status"
 	@echo ""
-	@echo "  === Docker (qdrant + api) ==="
-	@echo "  make up          docker compose up -d"
+	@echo "  === Docker (qdrant + api + frontend) ==="
+	@echo "  make up          docker compose up -d (tất cả services)"
 	@echo "  make down        docker compose down"
 	@echo "  make logs        Stream API logs"
 	@echo "  make logs-chat   Tail llama-server chat log"
 	@echo "  make logs-embed  Tail llama-server embed log"
+	@echo ""
+	@echo "  === Frontend ==="
+	@echo "  make frontend-dev    Vite dev server (hot reload) tại :5173"
+	@echo "  make frontend-build  Build production bundle"
 	@echo ""
 	@echo "  === Monitoring (local Docker) ==="
 	@echo "  make monitor-up  Start Prometheus + Grafana"
@@ -117,3 +121,10 @@ lint:
 
 build:
 	docker compose build api
+
+# ── Frontend ───────────────────────────────────────────────────────────────────
+frontend-dev:
+	cd frontend && npm run dev
+
+frontend-build:
+	cd frontend && npm run build

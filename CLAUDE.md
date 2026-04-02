@@ -12,6 +12,10 @@ backend/src/      — FastAPI app
   eval/           — Evaluator (LLM-as-judge), Dataset (SQLite), Metrics
   api/routes/     — chat, documents, agents, feedback, health
   observability/  — Prometheus metrics, structlog, Langfuse
+frontend/         — React + Vite + TypeScript UI
+  src/api/        — API client (streamChat, uploadDocument, ...)
+  src/components/ — ChatMessage, ChatInput, DocumentPanel, HealthBadge, FeedbackWidget
+  src/hooks/      — useChat, useDocuments
 models/           — Symlink → /home/dev/Develop_2026/gguf/ (GGUF files)
 data/             — SQLite DBs (eval.db, ab_testing.db) + eval reports
 scripts/          — start-llamacpp.sh, k8s-setup.sh, k8s-deploy.sh, run-eval.sh
@@ -23,11 +27,12 @@ docs/             — Tài liệu học từ đầu cho mỗi module
 
 ## Commands
 ```bash
-make up           # docker compose up -d
+make up           # docker compose up -d (qdrant + api + frontend)
 make down         # docker compose down
 make logs         # logs api
 make test         # pytest
 make setup        # kiểm tra models/
+make frontend-dev # Vite dev server :5173 (hot reload)
 ```
 
 ## Models
@@ -65,3 +70,4 @@ make setup        # kiểm tra models/
 - [x] Phase 2: Agent System (LangGraph) ✅ — tested, fibonacci(10)=55
 - [x] Phase 3: Kubernetes + Monitoring  ✅ — k3s, Helm, Prometheus, Grafana, Langfuse, CI/CD
 - [x] Phase 4: Evaluation + Guardrails  ✅ — LLM-as-judge, A/B testing, feedback loop, rate limiting
+- [x] Phase 5: Frontend                 ✅ — React + Vite + TypeScript, SSE streaming, RAG UI
