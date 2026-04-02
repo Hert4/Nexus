@@ -46,7 +46,7 @@ services:
       dockerfile: Dockerfile
     container_name: nexus-frontend
     ports:
-      - "5173:5173"
+      - "3000:5173"   # host:3000 → nginx:5173 (tránh conflict với Vite dev server :5173)
     depends_on:
       - api
     restart: unless-stopped

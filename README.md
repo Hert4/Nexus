@@ -81,10 +81,12 @@ make serve
 
 # Terminal 2: Start API + Qdrant + Frontend
 make up
-# → Frontend: http://localhost:5173    ✓  ← mở browser tại đây
+# → Frontend: http://localhost:3000    ✓  ← mở browser tại đây
 # → API:      http://localhost:8000    ✓
 # → Qdrant:   http://localhost:6333    ✓
 ```
+
+> **Dev mode** (hot-reload): `make frontend-dev` → `http://localhost:5173`
 
 ### 5. Kiểm tra
 

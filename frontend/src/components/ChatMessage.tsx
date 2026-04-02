@@ -6,6 +6,68 @@ interface ChatMessageProps {
   message: ChatMessage;
 }
 
+// ── Simple markdown renderer ───────────────────────────────────────────────
+// Supports: fenced code blocks (```lang\n...\n```), inline `code`, **bold**, *italic*
+// Returns an array of React nodes.
+function renderMarkdown(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  // Split on fenced code blocks
+  const fencedRe = /```(\w*)\n?([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = fencedRe.exec(text)) !== null) {
+    // Text before the code block
+    if (match.index > lastIndex) {
+      nodes.push(...renderInline(text.slice(lastIndex, match.index), nodes.length));
+    }
+    // Code block
+    const lang = match[1] || '';
+    const code = match[2].replace(/\n$/, ''); // trim trailing newline
+    nodes.push(
+      <div key={`cb-${match.index}`} className="code-block">
+        {lang && <span className="code-block__lang">{lang}</span>}
+        <pre className="code-block__pre"><code>{code}</code></pre>
+      </div>,
+    );
+    lastIndex = fencedRe.lastIndex;
+  }
+
+  // Remaining text
+  if (lastIndex < text.length) {
+    nodes.push(...renderInline(text.slice(lastIndex), nodes.length));
+  }
+
+  return nodes;
+}
+
+function renderInline(text: string, baseKey: number): React.ReactNode[] {
+  // Split on inline code, **bold**, *italic*
+  const parts: React.ReactNode[] = [];
+  const re = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    const token = m[0];
+    if (token.startsWith('`')) {
+      parts.push(<code key={`ic-${baseKey}-${m.index}`} className="inline-code">{token.slice(1, -1)}</code>);
+    } else if (token.startsWith('**')) {
+      parts.push(<strong key={`b-${baseKey}-${m.index}`}>{token.slice(2, -2)}</strong>);
+    } else {
+      parts.push(<em key={`i-${baseKey}-${m.index}`}>{token.slice(1, -1)}</em>);
+    }
+    last = re.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+
+  // Wrap in a paragraph preserving newlines
+  return [<span key={`p-${baseKey}`} className="text-para">{parts}</span>];
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function ChatMessageBubble({ message }: ChatMessageProps) {
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const isUser = message.role === 'user';
@@ -20,7 +82,9 @@ export default function ChatMessageBubble({ message }: ChatMessageProps) {
 
         {/* Message text */}
         <div className="chat-bubble__text">
-          {message.content}
+          {isUser
+            ? message.content
+            : renderMarkdown(message.content)}
           {message.isStreaming && <span className="cursor-blink" aria-hidden="true" />}
         </div>
 

@@ -173,8 +173,10 @@ export async function uploadDocument(
     xhr.open('POST', `${BASE}/documents`);
 
     if (onProgress) {
+      // upload.onprogress tracks bytes sent to server, not server processing time.
+      // Cap at 99% so the bar stays visible until xhr.onload fires (after ingestion).
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+        if (e.lengthComputable) onProgress(Math.min(99, Math.round((e.loaded / e.total) * 100)));
       };
     }
 
